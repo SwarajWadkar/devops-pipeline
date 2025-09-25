@@ -5,11 +5,6 @@ pipeline {
     DOCKERHUB_CREDS = 'dockerhub-creds' // ✅ Credential ID in Jenkins
   }
   stages {
-    stage('Checkout') {
-      steps {
-        git branch: 'main', url: 'https://github.com/SwarajWadkar/devops-pipeline.git'
-      }
-    }
     stage('Build Docker Image') {
       steps {
         sh 'docker build -t ${IMAGE}:${GIT_COMMIT::8} .'
