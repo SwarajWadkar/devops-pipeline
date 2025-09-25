@@ -1,47 +1,50 @@
 pipeline {
-  agent any
-  environment {
-    IMAGE = "swarajwadkar/myapp"        // ✅ Docker Hub username
-    DOCKERHUB_CREDS = 'dockerhub-creds' // ✅ Credential ID in Jenkins
-  }
-  options {
-        shell('/bin/bash')   // 👈 force bash
-       }
-  stages {
-    stage('Build Docker Image') {
-      steps {
-        sh 'docker build -t ${IMAGE}:${GIT_COMMIT::8} .'
-      }
+    agent any
+    environment {
+        DOCKER_HUB_USER = "swarajwadkar"
     }
-    stage('Scan Docker Image') {
-      steps {
-        sh '''
-        trivy image --exit-code 1 --severity CRITICAL,HIGH ${IMAGE}:${GIT_COMMIT::8} || { 
-          echo "VULNERABILITIES FOUND"; 
-          exit 1; 
+
+    stages {
+        stage('Build Docker Image') {
+            steps {
+                sh '''#!/bin/bash
+                docker build -t $DOCKER_HUB_USER/devops-app:$BUILD_NUMBER .
+                '''
+            }
         }
-        '''
-      }
-    }
-    stage('Push to Docker Hub') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh 'echo $DOCKER_PASS | docker login --username $DOCKER_USER --password-stdin'
-          sh 'docker push ${IMAGE}:${GIT_COMMIT::8}'
+
+        stage('Scan Docker Image') {
+            steps {
+                sh '''#!/bin/bash
+                trivy image $DOCKER_HUB_USER/devops-app:$BUILD_NUMBER || true
+                '''
+            }
         }
-      }
+
+        stage('Push to Docker Hub') {
+            steps {
+                sh '''#!/bin/bash
+                echo $DOCKER_HUB_PASS | docker login -u $DOCKER_HUB_USER --password-stdin
+                docker push $DOCKER_HUB_USER/devops-app:$BUILD_NUMBER
+                '''
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''#!/bin/bash
+                kubectl apply -f deployment.yaml
+                kubectl apply -f service.yaml
+                '''
+            }
+        }
     }
-    stage('Deploy to Kubernetes') {
-      steps {
-        sh '''
-        kubectl set image deployment/myapp myapp=${IMAGE}:${GIT_COMMIT::8} --namespace default || kubectl apply -f k8s/deployment.yaml
-        '''
-      }
+
+    post {
+        always {
+            sh '''#!/bin/bash
+            docker logout
+            '''
+        }
     }
-  }
-  post {
-    always {
-      sh 'docker logout || true'
-    }
-  }
 }
