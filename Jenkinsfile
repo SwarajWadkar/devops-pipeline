@@ -4,6 +4,9 @@ pipeline {
     IMAGE = "swarajwadkar/myapp"        // ✅ Docker Hub username
     DOCKERHUB_CREDS = 'dockerhub-creds' // ✅ Credential ID in Jenkins
   }
+  options {
+        shell('/bin/bash')   // 👈 force bash
+       }
   stages {
     stage('Build Docker Image') {
       steps {
