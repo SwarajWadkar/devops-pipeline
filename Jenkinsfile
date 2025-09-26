@@ -1,5 +1,6 @@
 pipeline {
     agent any
+
     environment {
         DOCKER_HUB_USER = "swarajwadkar"
     }
@@ -23,7 +24,9 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker_hub_creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                 usernameVariable: 'DOCKER_USER', 
+                                                 passwordVariable: 'DOCKER_PASS')]) {
                     sh '''#!/bin/bash
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                     docker push $DOCKER_HUB_USER/devops-app:$BUILD_NUMBER
