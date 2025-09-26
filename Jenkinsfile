@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     environment {
         DOCKER_HUB_USER = "swarajwadkar"
     }
@@ -24,9 +23,9 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_HUB_PASS', variable: 'DOCKER_HUB_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker_hub_creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''#!/bin/bash
-                    echo "$DOCKER_HUB_PASS" | docker login -u $DOCKER_HUB_USER --password-stdin
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                     docker push $DOCKER_HUB_USER/devops-app:$BUILD_NUMBER
                     '''
                 }
@@ -36,8 +35,11 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh '''#!/bin/bash
-                kubectl apply -f deployment.yaml
-                kubectl apply -f service.yaml
+                kubectl apply -f k8/deployment.yaml
+                kubectl apply -f k8/service.yaml
+
+                echo "⏳ Waiting for pods to become ready..."
+                kubectl rollout status deployment/devops-app --timeout=120s
                 '''
             }
         }
@@ -46,7 +48,7 @@ pipeline {
     post {
         always {
             sh '''#!/bin/bash
-            docker logout
+            docker logout || true
             '''
         }
     }
